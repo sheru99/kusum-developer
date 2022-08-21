@@ -10,7 +10,7 @@ const publisherController = require("../controllers/publisherController")
 router.post("/registerAuthor", authorController.registerAuthor)
 
 ///////////////////////////////////////////////////////////////////////////////////////
-router.post("/registerPublisher", publisherController.registerPublisher)
+router.post("/createPublisher", publisherController.createPublisher)
 /********************************register****************************** */ 
 router.post("/registerBook", bookController.registerBook)
 
