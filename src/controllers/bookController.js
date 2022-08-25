@@ -1,4 +1,3 @@
-const { count } = require("console")
 const BookModel = require("../models/bookModel")
 
 const createBook= async function (req, res) {
@@ -7,11 +6,6 @@ const createBook= async function (req, res) {
     let savedData= await BookModel.create(data)
     res.send({msg: savedData})
 }
-
-
-
-
-
 
 const getBooksData = async function (req, res) {
     let allBooks = await BookModel.find({ authorName: "HO" })
@@ -22,11 +16,7 @@ const getBooksData = async function (req, res) {
 
 
 const updateBooks = async function (req, res) {
-    let data = req.body // {sales: "1200"}
-    // let allBooks= await BookModel.updateMany( 
-    //     { author: "SK"} , //condition
-    //     { $set: data } //update in data
-    //  )
+    let data = req.body 
     let allBooks = await BookModel.findOneAndUpdate(
         { authorName: "ABC" }, //condition
         { $set: data }, //update in data
@@ -37,7 +27,7 @@ const updateBooks = async function (req, res) {
 }
 
 const deleteBooks = async function (req, res) {
-    // let data = req.body 
+    
     let allBooks = await BookModel.updateMany(
         { authorName: "FI" }, //condition
         { $set: { isDeleted: true } }, //update in data
@@ -50,7 +40,7 @@ const deleteBooks = async function (req, res) {
 
 
 const totalSalesPerAuthor = async function (req, res) {
-    // let data = req.body 
+  
     let allAuthorSales = await BookModel.aggregate(
         [
             { $group: { _id: "$authorName", totalNumberOfSales: { $sum: "$sales" } } },

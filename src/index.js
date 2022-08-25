@@ -7,8 +7,18 @@ const app = express();
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 
+const globalMiddleware= function (req, res, next) {
+    let currDate = new Date().toLocaleString()
+    console.log(currDate, req.originalUrl,req.ip);
+    next()
+}
 
-mongoose.connect("mongodb+srv://functionup-cohort:G0Loxqc9wFEGyEeJ@cluster0.rzotr.mongodb.net/Pritesh8769811-DB?retryWrites=true&w=majority", {
+
+app.use(globalMiddleware)
+
+
+
+mongoose.connect("mongodb+srv://kusum_99:9vJ9mxlJH1cYZ1oO@cluster0.jelghm1.mongodb.net/middleware-db", {
     useNewUrlParser: true
 })
 .then( () => console.log("MongoDb is connected"))
