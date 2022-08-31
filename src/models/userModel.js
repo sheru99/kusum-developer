@@ -6,9 +6,13 @@ const userSchema = new mongoose.Schema( {
     mobile: {
         type: String,
 
-        required: true
+     
     },
-    emailId: String,
+    isdeleted:{
+        type: Boolean,
+        default: false
+    },
+  emailId: String,
     password: String,
     gender: {
         type: String,
