@@ -5,8 +5,6 @@ const userSchema = new mongoose.Schema( {
     lastName: String,
     mobile: {
         type: String,
-
-     
     },
     isdeleted:{
         type: Boolean,

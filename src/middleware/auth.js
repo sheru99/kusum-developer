@@ -8,7 +8,7 @@ let MDwear = function (req, res, next) {
             return res.send({ status: false, msg: "token must be present" });
         }
 
-        let decodedToken = jwt.verify(token, "functionup-thorium");
+        let decodedToken = jwt.verify(token, "functionup-plutonium");
 
         if (decodedToken.userId !== req.params.userId) {
             return res.send({ msg: "you must have to login first" })
