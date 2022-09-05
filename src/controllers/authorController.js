@@ -2,7 +2,7 @@ const authorModel=require("../models/authorModel")
 
 const authorCreate=async function(req,res){
     try {
-        let data=req.body 
+        let data=req.body
         if(Object.keys(data).length !=0){
         let savedata=await authorModel.create(data)
           return res.status(201).send({status:true,data:savedata})

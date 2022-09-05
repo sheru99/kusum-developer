@@ -5,11 +5,13 @@ const authorModel=require("../models/authorModel")
 const createBlogs=async function(req,res){
     try {
         let data =req.body
+        let authorId=req.body.authorId
+        if(!authorId)return res.status(400).send({status:false,msg:"please provide authorId"})
         if(Object.keys(data).length !=0){
         let authorId=await authorModel.findOne({_id:data.authorId})
-        if(!authorId) return res.status(403).send({status:false,msg:"please provide invalid auhtor id "})
+        if(!authorId) return res.status(400).send({status:false,msg:"please provide invalid auhtor id "})
         let savedData=await blogsModel.create(data)
-          return  res.status(200).send({status:true,data:savedData})
+          return  res.status(201).send({status:true,data:savedData})
     }else{
         return  res.status(400).send({status:false,msg:"body is empty"})
     }
