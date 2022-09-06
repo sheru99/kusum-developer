@@ -81,7 +81,7 @@ const deleteBlog = async function (req, res) {
 //===============================delete api by query param==============================
 const deleteByQuery = async function (req, res) {
   try {
-  data = req.query
+   let data = req.query
   
   console.log(data)
   let find = await blogsModel.findOne(data)
