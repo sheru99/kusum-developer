@@ -34,11 +34,14 @@ const blogsSchema=new mongoose.Schema({
           default: false
         },
     deletedAt:{
-        type:Date
+        type:Date,
+        default:null
     },
     publishedAt:{
-        type:Date
+        type:Date,
+        default:null
     }
  
 },{timestamps:true})
 module.exports=mongoose.model("Blog",blogsSchema)
+

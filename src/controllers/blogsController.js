@@ -1,27 +1,40 @@
 const blogsModel = require("../models/blogsModel")
 const authorModel = require("../models/authorModel")
-const moment= require("moment")
+const moment=require("moment")
+const mongoose = require("mongoose")
+const ObjectId = mongoose.Types.ObjectId
 
 
 
 //====================post api=========================================
 const createBlogs = async function (req, res) {
   try {
-    let data = req.body
-    if (Object.keys(data).length != 0) {
-      let authorId = req.body.authorId
+    let { title, body, category, subcategory, authorId } = req.body
+    if (Object.keys(req.body).length != 0) {
+      if (!title) {
+        return res.status(400).send({ status: false, msg: "Title field is required" })
+      }
+      if (!body) {
+        return res.status(400).send({ status: false, msg: "Body field is required" })
+      }
+      if (!category) {
+        return res.status(400).send({ status: false, msg: "Categoryfield is required" })
+      }
+      if (!subcategory) {
+        return res.status(400).send({ status: false, msg: "Subcategory field is required" })
+      }
+
       if (!authorId) return res.status(400).send({ status: false, msg: "please provide authorId" })
 
-      let authorid = await authorModel.findOne({ _id: data.authorId })
+      if (req.validToken.authorId != req.body.authorId) return res.status(403).send({ status: false, msg: "You are not Authorised to this task" })
+
+      let authorid = await authorModel.findOne({ _id: req.body.authorId })
       if (!authorid) return res.status(400).send({ status: false, msg: "please provide valid author id " })
-      let savedData = await blogsModel.create(data)
+      let savedData = await blogsModel.create(req.body)
       return res.status(201).send({ status: true, data: savedData })
     } else {
-      return res.status(400).send({ status: false, msg: "body is empty" })
+      return res.status(400).send({ status: false, msg: "no data to create blog" })
     }
-
-
-
   } catch (error) {
     return res.status(500).send({ status: false, msg: error.message })
   }
@@ -29,51 +42,94 @@ const createBlogs = async function (req, res) {
 //=======================get api==========================================
 const getBlogs = async function (req, res) {
   try {
-    // Spreading query to pass all the filters in condition
 
-    const check = await blogsModel.find({ ...req.query, isDeleted: false, isPublished: false });
+    let authorId = req.query.authorId;
+//.............checking author id length.................................
+    if (authorId && !ObjectId.isValid(authorId)) {
+      return res
+        .status(400)
+        .send({ status: false, msg: `this authorId ${authorId} is not valid` });
+    }
+    // Spreading query to pass all the filters in condition
+    const check = await blogsModel.find({ ...req.query, isDeleted: false, isPublished: false })
     if (check.length == 0) return res.status(404).send({ status: false, msg: "No blogs found" })
 
+    if (req.validToken.authorId != req.query.authorId) return res.status(403).send({ status: false, msg: " Yo are not authorised to this task" })
     return res.status(200).send({ status: true, data: check });
   } catch (error) {
     res.status(500).send({ status: false, error: error.message });
   }
 }
-//=========================put api =============================
+//..............................update................................
 const updateBlog = async function (req, res) {
   try {
-    let getId = req.params.blogId
+
     let data = req.body
-    let checkId = await blogsModel.findOne({ _id: getId })
-    console.log(checkId)
-    if (checkId) {
-      if (checkId.isDeleted === false) {
-      
-        let check = await blogsModel.findByIdAndUpdate(getId, { $push: { tags: data.tags, subcategory: data.subcategory }, title: data.title, body: data.body, category: data.category }, { new: true })
-        res.status(200).send({ status: true, msg: check })
-      }
-      else {
-        res.send("CANT UPDATE , IT IS DELETED")
-      }
+    let blogId = req.params.blogId
+    //..............checking if the body is empty or not....................
+    if (Object.keys(data).length == 0)
+      return res.status(404).send({ msg: "No data for Update " })
+    //.............checking author id length.................................
+    if (!mongoose.isValidObjectId(blogId))
+      return res.status(400).send({ Status: false, message: `Please enter valid blogId ${blogId} ` })
+    //.................matching blogId in blogs collection........................
+    let findblog = await blogsModel.findById(blogId)
+    if (!findblog)
+      return res.status(404).send({ msg: "blogId  is invalid " })
+    //..................checking if the isDeleted key is true or not......................   
+    if (findblog.isDeleted == true)
+      return res.status(404).send({ msg: "Blog is already deleted and cannot update " })
+    //.................middleware passes the control to handler....................
+    if (req.validToken.authorId != findblog.authorId) return res.status(403).send({ status: false, msg: "You are not Authorised to this task" })
+
+    if (findblog.isDeleted == false) {
+      let updatedBlog = await blogsModel.findOneAndUpdate({ _id: blogId }, {
+        $set: {
+          title: data.title,
+          body: data.body,
+          publishedAt: moment(). format('YYYY-MM-DD'),
+          isPublished: true
+        },
+    //......i used push method because tags key and subcategory keys is inside in array
+        $push: {
+          tags: data.tags,
+          subcategory: data.subcategory
+        }
+      }, { new: true, upsert: true })
+      return res.status(200).send({ status: true, data: updatedBlog })
     }
-    else {
-      res.status(401).send({ status: false, msg: "Please enter valid Blog id" })
-    }
-  } catch (error) {
-    console.log(error.message)
-    res.status(500).send(error.message)
+
+  }
+  catch (error) {
+    res.status(500).send({ status: false, error: error.message })
   }
 }
-//=======================delete-api= ==============================
+//=======================delete-api by path params==========================================
 const deleteBlog = async function (req, res) {
   try {
 
     let data = req.params.blogId
+    if (!mongoose.isValidObjectId(data))
+      return res.status(400).send({ Status: false, message: `Please enter valid blogId ${data} ` })
+
     if (!data) {
-      return res.status(403).send({ status: false, msg: "blogId is invalid" })
+      return res.status(403).send({ status: false, msg: "blog id is not present in params" })
     }
-    let deletes = await blogsModel.findOneAndUpdate({ _id: data }, { $set: { isDeleted: true } }, { new: true })
-    return res.status(200).send({ status: true, msg: "User is Deleted", data: deletes })
+    let find = await blogsModel.findOne({ _id: data })
+    if (!find) {
+      return res.status(404).send({ status: false, msg: "blog does not exits" })
+    }
+    if (find.isDeleted == true) {
+      return res.status(400).send({ status: false, msg: "this document is already deleted" })
+    }
+    //.................middleware passes the control to handler....................
+    if (req.validToken.authorId !== find.authorId.toString()) return res.status(403).send({ status: false, msg: "Not Authorised" })
+
+    //.................updating the isDeleted key and deletedAt key.................
+    let deletes = await blogsModel.findOneAndUpdate({ _id: data }, { $set: { isDeleted: true, deletedAt: "07/09/2022" } }, { new: true })
+
+    return res.status(200).send({ status: false, data: "User has been deleted successfully!" })
+  //..if there is any error inside in the try block then catch block throws the error
   } catch (error) {
     res.status(500).send({ status: false, msg: error.message })
   }
@@ -81,32 +137,42 @@ const deleteBlog = async function (req, res) {
 //===============================delete api by query param==============================
 const deleteByQuery = async function (req, res) {
   try {
-   let data = req.query
-  
-  console.log(data)
-  let find = await blogsModel.findOne(data)
-  console.log(find)
-  if (!find) { 
-    return res.status(404).send({ status: false, msg: "Blog is not created" })
-   }
-  if(find.isDeleted==true){
-    return res.status(400).send({status:false,msg:"THIS DOCUMENT Is deleted"})
+
+    let data = req.query
+    let authorId = req.query.authorId;
+       //..............checking if the body is empty or not....................
+       if (Object.keys(data).length == 0)
+       return res.status(404).send({ msg: "query param is empty" })
+       //............verifying the legnth of authorId..........................
+    if (authorId && !ObjectId.isValid(authorId)) {
+      return res
+        .status(400)
+        .send({ status: false, msg: `this authorId ${authorId} is not valid` });
+    }
+    let find = await blogsModel.findOne(data)
+
+    if (!find) {
+      return res.status(404).send({ status: false, msg: "Blog is not exits" })
+    }
+    if (find.isDeleted == true) {
+      return res.status(400).send({ status: false, msg: "this document is already deleted" })
+    }
+
+    if (req.validToken.authorId !== find.authorId.toString()) return res.status(403).send({ status: false, msg: "you are Not Authorised to task" })
+
+    let saved = await blogsModel.findOneAndUpdate(data, { $set: { isDeleted: true }, deletedAt:moment(). format('YYYY-MM-DD') }, { new: true })
+
+    return res.status(200).send({ status: true, msg: "user is successfully deleted",data:saved })
+
+  } catch (error) {
+
+     return res.status(500).send({ status: false, msg: error.message })
   }
-  let saved = await blogsModel.findOneAndUpdate( data ,{ $set: { isDeleted: true}}, { new: true })
-  res.status(200).send({ status: true, msg: saved })
-} catch (error) {
-    res.status(500).send({status:false,msg:error.message})
-}
+
 }
 
-
-
-
-module.exports.createBlogs = createBlogs
-module.exports.getBlogs = getBlogs
-module.exports.updateBlog = updateBlog
-module.exports.deleteBlog = deleteBlog
-module.exports.deleteByQuery = deleteByQuery
+//.........................Making apis Public..................................
+module.exports = {createBlogs,getBlogs, updateBlog, deleteBlog, deleteByQuery }
 
 
 
@@ -121,37 +187,7 @@ module.exports.deleteByQuery = deleteByQuery
 
 
 
-// const updatedBlogs = async function (req, res) {
-//   try {
-//     let blog = req.body
-//     if (!(blog.title || blog.body || blog.tags || blog.subcategory || blog.isPublished)) {
-//       return res.status(400).send({ status: false, msg: "Invalid Filters" })
-//     }
-//     let blogId = req.params.blogId
-//     if (!mongoose.Types.ObjectId.isValid(blogId)) {
-//       return res.status(400).send({ status: false, msg: "Invalid Blog-Id" })
-//     }
-//     let blogData = await blogsModel.findById(blogId)
-//     if (blogData.isDeleted == true) {
-//       return res.status(404).send({ status: false, msg: "Data not found" })
-//     }
-//     console.log(blog.subcategory)
-//     blogData.publishedAt = moment().format("DD-MM-YYYY, hh:mm a")
 
-//     let updatedBlog = await blogsModel.findByIdAndUpdate(
-//       { _id: blogId },
-//       { $addToSet: { tags: blog.tags, subcategory: blog.subcategory }, $set: { title: blog.title, body: blog.body } },
-//       { new: true }
 
-//     )
-//     return res.status(200).send({ status: true, updatedData: updatedBlog })
-
-//   }
-//   catch (error) {
-//     return res.status(500).send({ status: false, msg: error.message });
-//   }
-// }
-
-// module.exports.updatedBlogs = updatedBlogs
 
 
