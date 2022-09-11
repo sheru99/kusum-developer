@@ -44,6 +44,9 @@ const getBlogs = async function (req, res) {
   try {
 
     let authorId = req.query.authorId;
+    if(!authorId){
+        return res.status(403).send({status:false,msg:"please provide authorId in query "})
+    }
 //.............checking author id length.................................
     if (authorId && !ObjectId.isValid(authorId)) {
       return res
@@ -51,10 +54,10 @@ const getBlogs = async function (req, res) {
         .send({ status: false, msg: `this authorId ${authorId} is not valid` });
     }
     // Spreading query to pass all the filters in condition
-    const check = await blogsModel.find({ ...req.query, isDeleted: false, isPublished: false })
+    const check = await blogsModel.find({ ...req.query, isDeleted: false, isPublished:false }).count()
     if (check.length == 0) return res.status(404).send({ status: false, msg: "No blogs found" })
 
-    if (req.validToken.authorId != req.query.authorId) return res.status(403).send({ status: false, msg: " Yo are not authorised to this task" })
+    if (req.validToken.authorId != req.query.authorId) return res.status(403).send({ status: false, msg: " You are not authorised to this task" })
     return res.status(200).send({ status: true, data: check });
   } catch (error) {
     res.status(500).send({ status: false, error: error.message });
@@ -123,7 +126,7 @@ const deleteBlog = async function (req, res) {
       return res.status(400).send({ status: false, msg: "this document is already deleted" })
     }
     //.................middleware passes the control to handler....................
-    if (req.validToken.authorId !== find.authorId.toString()) return res.status(403).send({ status: false, msg: "Not Authorised" })
+    if (req.validToken.authorId !== find.authorId.toString()) return res.status(403).send({ status: false, msg: "you are not authorised to this task" })
 
     //.................updating the isDeleted key and deletedAt key.................
     let deletes = await blogsModel.findOneAndUpdate({ _id: data }, { $set: { isDeleted: true, deletedAt: "07/09/2022" } }, { new: true })
@@ -138,10 +141,24 @@ const deleteBlog = async function (req, res) {
 const deleteByQuery = async function (req, res) {
   try {
 
-    let data = req.query
-    let authorId = req.query.authorId;
+    let {authorId,category,tags,subCategory}= req.query
+
+    if(!authorId){
+      return res.status(400).send({status:false,msg:"auhtorId is not present in the query"})
+    }
+
+    if(!category){
+      return res.status(400).send({status:false,msg:"category is not present in the query"})
+    }
+    if(!tags){
+      return res.status(400).send({status:false,msg:"tags is not present in the query"})
+    }
+    if(!subCategory){
+      return res.status(400).send({status:false,msg:"subCategory is not present in the query"})
+    }
+    
        //..............checking if the body is empty or not....................
-       if (Object.keys(data).length == 0)
+       if (Object.keys(req.query).length == 0)
        return res.status(404).send({ msg: "query param is empty" })
        //............verifying the legnth of authorId..........................
     if (authorId && !ObjectId.isValid(authorId)) {
@@ -149,7 +166,7 @@ const deleteByQuery = async function (req, res) {
         .status(400)
         .send({ status: false, msg: `this authorId ${authorId} is not valid` });
     }
-    let find = await blogsModel.findOne(data)
+    let find = await blogsModel.findOne(req.query)
 
     if (!find) {
       return res.status(404).send({ status: false, msg: "Blog is not exits" })
@@ -160,7 +177,7 @@ const deleteByQuery = async function (req, res) {
 
     if (req.validToken.authorId !== find.authorId.toString()) return res.status(403).send({ status: false, msg: "you are Not Authorised to task" })
 
-    let saved = await blogsModel.findOneAndUpdate(data, { $set: { isDeleted: true }, deletedAt:moment(). format('YYYY-MM-DD') }, { new: true })
+    let saved = await blogsModel.findOneAndUpdate(req.query, { $set: { isDeleted: true }, deletedAt:moment(). format('YYYY-MM-DD') }, { new: true })
 
     return res.status(200).send({ status: true, msg: "user is successfully deleted",data:saved })
 
@@ -173,6 +190,25 @@ const deleteByQuery = async function (req, res) {
 
 //.........................Making apis Public..................................
 module.exports = {createBlogs,getBlogs, updateBlog, deleteBlog, deleteByQuery }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
